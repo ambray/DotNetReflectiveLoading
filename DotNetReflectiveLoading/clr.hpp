@@ -14,6 +14,7 @@
 
 namespace clr {
     constexpr wchar_t clr_default_version[] = /*L"v2.0.50727"; */L"v4.0.30319";
+    constexpr unsigned long clr_ver_reservation = 30;
     constexpr mscorlib::BindingFlags mem_fn_call = static_cast<mscorlib::BindingFlags>(mscorlib::BindingFlags_InvokeMethod | mscorlib::BindingFlags_Instance | mscorlib::BindingFlags_Public);
     constexpr mscorlib::BindingFlags static_fn_call = static_cast<mscorlib::BindingFlags>(mscorlib::BindingFlags_InvokeMethod | mscorlib::BindingFlags_Static | mscorlib::BindingFlags_Public);
 
@@ -50,7 +51,6 @@ namespace clr {
     private:
         mscorlib::_AssemblyPtr p_;
         SAFEARRAY* mod_;
-
     public:
         ClrAssembly(mscorlib::_AssemblyPtr p);
         mscorlib::_TypePtr find_type(const std::wstring& clsname);
@@ -88,6 +88,7 @@ namespace clr {
         Microsoft::WRL::ComPtr<ICLRRuntimeInfo> pRuntime_;
         Microsoft::WRL::ComPtr<ICorRuntimeHost> pHost_;
         std::vector<std::shared_ptr<SAFEARRAY>>	arr_;
+        std::wstring find_runtime();
     public:
         ClrDomain();
         ClrDomain(const std::wstring& clrTarget);

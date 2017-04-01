@@ -1,5 +1,6 @@
 #include "clr.hpp"
 #include "utils.hpp"
+#include <iostream>
 
 namespace clr {
     ClrAssembly::ClrAssembly(mscorlib::_AssemblyPtr p) : p_(p)
@@ -69,11 +70,55 @@ namespace clr {
         return cls;
     }
 
-    ClrDomain::ClrDomain() : ClrDomain(clr_default_version)
+
+    std::wstring ClrDomain::find_runtime()
     {
+        HRESULT hr = S_OK;
+        int g_maj = 0;
+        int g_min = 0;
+        int g_build = 0;
+        std::wstring ver = clr_default_version;
+
+        if (!pMeta_)
+            return ver;
+
+        IEnumUnknown* pRuntimes = nullptr;
+        ICLRRuntimeInfo* pInfo = nullptr;
+        ULONG fetched = 0;
+
+        if (FAILED((hr = pMeta_->EnumerateInstalledRuntimes(&pRuntimes)))) {
+            LOG_ERROR("Failed to enumerate installed runtimes!", hr);
+            return ver;
+        }
+
+        while (SUCCEEDED((hr = pRuntimes->Next(1, (IUnknown**)&pInfo, &fetched))) && 0 != fetched) {
+            wchar_t ver_string[clr_ver_reservation] = { 0 };
+            DWORD ver_size = clr_ver_reservation;
+            int c_min = 0, c_maj = 0, c_build = 0;
+            if (FAILED((hr = pInfo->GetVersionString(ver_string, &ver_size)))) {
+                LOG_ERROR("Failed to get version string!", hr);
+                continue;
+            }
+            swscanf_s(ver_string, L"v%d.%d.%d", &c_maj, &c_min, &c_build);
+            if (c_maj > g_maj) {
+                g_maj = c_maj;
+                g_min = c_min;
+                g_build = c_build;
+                ver = ver_string;
+            }
+            else if (c_maj == g_maj) {
+                if (c_min > g_min || (c_min == g_min && c_build > g_build)) {
+                    g_min = c_min;
+                    g_build = c_build;
+                    ver = ver_string;
+                }
+            }
+        }
+
+        return ver;
     }
 
-    ClrDomain::ClrDomain(const std::wstring & clr_version)
+    ClrDomain::ClrDomain()
     {
         HRESULT hr = S_OK;
         BOOL loadable = FALSE;
@@ -83,6 +128,8 @@ namespace clr {
            LOG_ERROR("Failed to initialize metahost!", hr);
            throw EXCEPT("Host initialization failed!");
         }
+
+        auto clr_version = find_runtime();
 
         if (FAILED((hr = pMeta_->GetRuntime(clr_version.c_str(), IID_PPV_ARGS(pRuntime_.GetAddressOf()))))) {
            LOG_ERROR("Runtime initialization failed!", hr);
