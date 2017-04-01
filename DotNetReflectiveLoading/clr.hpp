@@ -91,7 +91,6 @@ namespace clr {
         std::wstring find_runtime();
     public:
         ClrDomain();
-        ClrDomain(const std::wstring& clrTarget);
         ~ClrDomain();
         std::unique_ptr<ClrAssembly> load(std::vector<uint8_t>& mod);
     };
