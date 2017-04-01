@@ -6,18 +6,16 @@ namespace clr {
     {
     }
 
-    std::unique_ptr<ClrClass> ClrAssembly::construct(const std::wstring & classname)
+    mscorlib::_TypePtr ClrAssembly::find_type(const std::wstring& clsname)
     {
-        std::unique_ptr<ClrClass> cls;
-        HRESULT             hr = S_OK;
-        bool                found = false;
-        mscorlib::_TypePtr  pClsType = nullptr;
-        mscorlib::_TypePtr* pTypes = nullptr;
-        BSTR                pName = L"";
-        SAFEARRAY*          pArray = nullptr;
-        long                lower_bound = 0;
-        long                upper_bound = 0;
-        variant_t           var;
+        mscorlib::_TypePtr   pClsType = nullptr;
+        mscorlib::_TypePtr*  pTypes = nullptr;
+        BSTR                 pName = L"";
+        HRESULT              hr = S_OK;
+        bool                 found = false;
+        SAFEARRAY*           pArray = nullptr;
+        long                 lower_bound = 0;
+        long                 upper_bound = 0;
 
         if (FAILED((hr = p_->GetTypes(&pArray)))) {
             LOG_ERROR("Failed to get types!", hr);
@@ -34,17 +32,37 @@ namespace clr {
                 break;
             }
 
-            if (pName == classname) {
+            if (pName == clsname) {
                 found = true;
                 break;
             }
         }
         SafeArrayUnaccessData(pArray);
         if (!found)
-            return false;
+            return nullptr;
+
+        return pClsType;
+
+    }
+
+    std::unique_ptr<ClrClass> ClrAssembly::construct(const std::wstring & classname)
+    {
+        std::unique_ptr<ClrClass> cls;
+        HRESULT             hr = S_OK;
+        bool                found = false;
+        mscorlib::_TypePtr  pClsType = nullptr;
+        bstr_t              pName(classname.c_str());
+        variant_t           var;
+
         if (FAILED((hr = p_->CreateInstance(pName, &var)))) {
             LOG_ERROR("Failed to create class instance!", hr);
-            found = false;
+            return nullptr;
+        }
+
+        pClsType = find_type(classname);
+        if (pClsType == nullptr) {
+            LOG("Failed to find class!");
+            return nullptr;
         }
 
         cls = std::make_unique<ClrClass>(pClsType, var);

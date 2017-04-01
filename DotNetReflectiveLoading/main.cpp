@@ -34,6 +34,8 @@ int wmain(int argc, wchar_t** argv)
         return -2;
     }
 
+    res->invoke_static(L"TestLib.Class1", L"drop_file", L"derp.txt", L"Herp Contents");
+
     auto cls = res->construct(argv[2]);
     if(!cls) {
         std::cout << "Class construction failed!" << std::endl;
