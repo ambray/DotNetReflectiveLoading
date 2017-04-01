@@ -34,10 +34,13 @@ int wmain(int argc, wchar_t** argv)
         return -2;
     }
 
-    variant_t tmp;
-    if (!res->construct(argv[2], tmp)) {
+    auto cls = res->construct(argv[2]);
+    if(!cls) {
         std::cout << "Class construction failed!" << std::endl;
+        return -3;
     }
+
+    cls->invoke_method(L"mb", L"This is a test");
 
     system("pause");
     return 0;

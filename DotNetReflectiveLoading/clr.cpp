@@ -6,8 +6,9 @@ namespace clr {
     {
     }
 
-    bool ClrAssembly::construct(const std::wstring & classname, variant_t & var)
+    std::unique_ptr<ClrClass> ClrAssembly::construct(const std::wstring & classname)
     {
+        std::unique_ptr<ClrClass> cls;
         HRESULT             hr = S_OK;
         bool                found = false;
         mscorlib::_TypePtr  pClsType = nullptr;
@@ -16,6 +17,7 @@ namespace clr {
         SAFEARRAY*          pArray = nullptr;
         long                lower_bound = 0;
         long                upper_bound = 0;
+        variant_t           var;
 
         if (FAILED((hr = p_->GetTypes(&pArray)))) {
             LOG_ERROR("Failed to get types!", hr);
@@ -45,7 +47,8 @@ namespace clr {
             found = false;
         }
 
-        return found;
+        cls = std::make_unique<ClrClass>(pClsType, var);
+        return cls;
     }
 
     ClrDomain::ClrDomain() : ClrDomain(clr_default_version)
@@ -140,5 +143,8 @@ namespace clr {
         clr = std::make_unique<ClrAssembly>(pAsm);
 
         return clr;
+    }
+    ClrClass::ClrClass(mscorlib::_TypePtr pt, variant_t inst) : pType_(pt), instance_(inst)
+    {
     }
 }

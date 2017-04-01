@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
+#include <array>
 
 #import <mscorlib.tlb> raw_interfaces_only				\
     high_property_prefixes("_get","_put","_putref")		\
@@ -13,14 +14,45 @@
 
 namespace clr {
     constexpr wchar_t clr_default_version[] = /*L"v2.0.50727"; */L"v4.0.30319";
+    constexpr mscorlib::BindingFlags mem_fn_call = static_cast<mscorlib::BindingFlags>(mscorlib::BindingFlags_InvokeMethod | mscorlib::BindingFlags_Instance | mscorlib::BindingFlags_Public);
+
+    class ClrClass {
+    private:
+       mscorlib::_TypePtr pType_;
+       variant_t instance_;
+
+    public:
+        ClrClass(mscorlib::_TypePtr pt, variant_t inst);
+
+        template<typename... Args>
+        variant_t invoke_method(const std::wstring& name, Args&&... args) {
+            variant_t ret;
+            HRESULT hr = S_OK;
+            bstr_t fn_name(name.c_str());
+            std::array<variant_t, sizeof...(args)> var_args{ variant_t(args)... };
+            auto arglist = SafeArrayCreateVector(VT_VARIANT, 0, var_args.size());
+            std::shared_ptr<SAFEARRAY> arglist_ptr(arglist, [](auto p) { if (p) SafeArrayDestroy(p); });
+            for (auto i = 0; i < sizeof...(args); ++i) {
+                LONG tmp = i;
+                if (FAILED((hr = SafeArrayPutElement(arglist, &tmp, &var_args[i])))) {
+                    throw std::runtime_error("Failed to add element to safe array!");
+                }
+            }
+            if (FAILED((hr = pType_->InvokeMember_3(fn_name, mem_fn_call, nullptr, instance_, arglist, &ret)))) {
+                throw std::runtime_error("Failed to invoke method!");
+            }
+            return ret;
+        }
+    };
 
     class ClrAssembly {
     private:
         mscorlib::_AssemblyPtr p_;
+        SAFEARRAY* mod_;
 
     public:
         ClrAssembly(mscorlib::_AssemblyPtr p);
-        bool construct(const std::wstring& classname, variant_t& var);
+        std::unique_ptr<ClrClass> construct(const std::wstring& classname);
     };
 
     class ClrDomain {
